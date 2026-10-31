@@ -1,0 +1,41 @@
+# ============================================================
+# .gitignore — Proyecto Ariztía / Tracking de Pollos
+# ============================================================
+
+# Entorno virtual Python (pesado, se regenera con pip install)
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Ejecutables y carpetas de Prometheus y Grafana (son binarios grandes)
+prometheus-*/
+grafana-*/
+
+# Modelos YOLO entrenados (archivos muy pesados, van en el README)
+*.pt
+
+# Base de datos local SQLite (se genera al correr el sistema)
+*.db
+*.sqlite
+
+# Variables de entorno reales (nunca subir claves al repositorio)
+.env
+
+# Carpetas de datos generados por Grafana
+data/
+
+# Archivos de sistema Windows
+Thumbs.db
+desktop.ini
+
+# Dataset de imágenes (si es muy grande, usar Git LFS o excluirlo)
+dataset_pollitos/
+
+# Template de sensores (ya no necesario con bridge_sensores.py activo)
+bridge_sensores.py.template
+
+# Archivos temporales
+*.tmp
+*.log

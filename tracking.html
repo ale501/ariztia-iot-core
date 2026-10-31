@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vigilancia de servos</title>
+<style>
+  :root {
+    --bg-dark: #0f1115;
+    --card-bg: #1a1d24;
+    --accent: #4f7cff;
+    --accent-hover: #3a63e0;
+    --text: #e8eaf0;
+    --text-dim: #8b909c;
+    --border: #2a2e38;
+    --ok: #4ade80;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+
+  .layout {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .video-card, .data-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+
+  .video-card {
+    flex: 2;
+    min-width: 320px;
+  }
+
+  .video-card img {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+    background: #000;
+  }
+
+  .data-card {
+    flex: 1;
+    min-width: 260px;
+  }
+
+  .data-card h2 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+  }
+
+  .status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th { color: var(--text-dim); font-weight: 500; }
+
+  .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+
+  button {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.6rem;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  button:hover { background: var(--accent-hover); }
+
+  .empty {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 0.6rem 0;
+  }
+  .back-link { display: inline-block; font-size: 0.8rem; color: var(--text-dim); text-decoration: none; margin-bottom: 1rem; }
+  .back-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="http://localhost:8000/menu.html">&larr; Volver al menú</a>
+<h1>Vigilancia de servos — cámara + tracking</h1>
+
+<div class="layout">
+  <div class="video-card">
+    <img src="/video_feed" alt="Video en vivo del tracking">
+  </div>
+
+  <div class="data-card">
+    <h2>Objetos detectados</h2>
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Conectando...</span>
+    </div>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Posición</th><th>Tamaño</th></tr>
+      </thead>
+      <tbody id="dataBody">
+        <tr><td colspan="3" class="empty">Sin datos aún</td></tr>
+      </tbody>
+    </table>
+    <button onclick="reiniciar()">Reiniciar tracking</button>
+  </div>
+</div>
+
+<script>
+  // IP/puerto donde corre app.py — ajusta si la página se sirve desde otro origen
+  const API_BASE = '';
+
+  async function actualizarDatos() {
+    try {
+      const res = await fetch(API_BASE + '/tracking_data');
+      const data = await res.json();
+
+      document.getElementById('statusDot').style.background = '#4ade80';
+      document.getElementById('statusText').textContent =
+        `Conectado — ${data.total_activos} objeto(s) activo(s)`;
+
+      const tbody = document.getElementById('dataBody');
+      if (data.objetos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">Sin objetos detectados</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.objetos.map(obj => `
+        <tr>
+          <td>ID ${obj.id}</td>
+          <td>(${obj.cx}, ${obj.cy})</td>
+          <td>${obj.w} × ${obj.h}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      document.getElementById('statusDot').style.background = '#ff5c5c';
+      document.getElementById('statusText').textContent = 'Sin conexión al backend';
+    }
+  }
+
+  async function reiniciar() {
+    await fetch(API_BASE + '/reiniciar', { method: 'POST' });
+  }
+
+  setInterval(actualizarDatos, 1000);
+  actualizarDatos();
+</script>
+
+</body>
+</html>

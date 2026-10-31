@@ -1,0 +1,29 @@
+{
+  "comentarios": "Configuración de Hardware y Puertos para ESP32, Sensores y Video",
+  
+  "sensores_esp32": {
+    "modo": "auto",
+    "puerto_com": "COM6",
+    "baud_rate": 115200,
+    "intervalo_lectura_segundos": 60,
+    "url_servidor_ariztia": "http://127.0.0.1:5001/ariztia_lectura",
+    "descripcion_puerto_com": "Detectado en COM6 (Silicon Labs CP210x)"
+  },
+
+  "camara_esp32_cam": {
+    "fuente": "esp32",
+    "ip_esp32_cam": "192.168.4.1",
+    "puerto_stream": 81,
+    "ruta_stream": "/stream",
+    "indice_webcam_local": 0,
+    "descripcion_fuente": "Usa 'esp32' para ESP32-CAM o 'webcam' para cámara integrada del PC"
+  },
+
+  "puertos_servicios": {
+    "web_menu": 8000,
+    "tracking_video": 5000,
+    "monitoreo_ariztia": 5001,
+    "prometheus": 9090,
+    "grafana": 3000
+  }
+}

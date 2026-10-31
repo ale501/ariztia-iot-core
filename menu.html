@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de proyectos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Panel de proyectos</h1>
+    <div class="subtitle">Acceso rápido a las secciones del sistema avícola e industrial.</div>
+  </div>
+  <a class="logout-link" href="#" onclick="cerrarSesion()">Cerrar sesión</a>
+</div>
+
+<div class="grid">
+  <a class="card" href="http://localhost:5000">
+    <div class="icono">🎯</div>
+    <div class="titulo">Tracking de pollitos (OpenCV)</div>
+    <div class="desc">Video en vivo + detección y alertas de agrupamiento.</div>
+    <div class="url">localhost:5000</div>
+  </a>
+
+  <a class="card" href="http://localhost:5001">
+    <div class="icono">🌡️</div>
+    <div class="titulo">Monitoreo Ariztía (IEC)</div>
+    <div class="desc">Temperatura, humedad, estrés calórico y ensayos.</div>
+    <div class="url">localhost:5001</div>
+  </a>
+
+  <a class="card" href="http://localhost:3000" target="_blank">
+    <div class="icono">📊</div>
+    <div class="titulo">Dashboard Grafana</div>
+    <div class="desc">Visualización analítica en tiempo real e histórico.</div>
+    <div class="url">localhost:3000 ↗</div>
+  </a>
+
+  <a class="card" href="http://localhost:9090" target="_blank">
+    <div class="icono">📈</div>
+    <div class="titulo">Servidor Prometheus</div>
+    <div class="desc">Estado de targets, raspado de métricas y consultas PromQL.</div>
+    <div class="url">localhost:9090 ↗</div>
+  </a>
+</div>
+
+<script>
+  // Validar sesión leyendo tanto localStorage como sessionStorage
+  let sesionValida = false;
+  try {
+    sesionValida = (localStorage.getItem('sesionActiva') === 'true') || 
+                   (sessionStorage.getItem('sesionActiva') === 'true');
+  } catch(e) {
+    sesionValida = true; // Si las cookies o storage están bloqueados por el navegador, no bloquear al usuario
+  }
+
+  if (!sesionValida) {
+    // Si no hay sesión, volver al login
+    window.location.href = 'login.html';
+  }
+
+  function cerrarSesion() {
+    try { localStorage.removeItem('sesionActiva'); } catch(e) {}
+    try { sessionStorage.removeItem('sesionActiva'); } catch(e) {}
+    window.location.href = 'login.html';
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoreo Ariztía — Estrés calórico</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .panel-ensayos {
+    background: #151821;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .panel-ensayos h2 {
+    font-size: 1rem;
+    color: var(--text);
+    margin-bottom: 0.6rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-ensayos p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.9rem;
+  }
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .btn-ensayo {
+    margin-top: 0;
+    width: auto;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    background: #232834;
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn-ensayo:hover {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-ensayo.active {
+    background: var(--accent);
+    border-color: var(--accent-hover);
+    font-weight: 600;
+  }
+  .btn-peligro.active {
+    background: #ff5c5c !important;
+  }
+  .btn-alerta.active {
+    background: #facc15 !important;
+    color: #000 !important;
+  }
+  .controles-extra {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+  .tag-error {
+    background: rgba(255, 92, 92, 0.25);
+    color: #ff5c5c;
+  }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="http://localhost:8000/menu.html">&larr; Volver al menú</a>
+<h1>Monitoreo Ariztía — Temperatura, Humedad e IEC</h1>
+<div class="subtitle">Muestreo objetivo: <strong>cada 60 segundos</strong> | Evaluación de estrés calórico (IEC = T°C + HR%).</div>
+
+<!-- PANEL DE ENSAYOS Y PRUEBAS -->
+<div class="panel-ensayos">
+  <h2>
+    <span>🧪 Ensayos de Prueba (Parámetros requeridos)</span>
+    <span id="indicadorModo" style="font-size: 0.8rem; color: var(--accent);">Modo: Normal</span>
+  </h2>
+  <p>Selecciona un escenario para comprobar la respuesta del sistema, las alertas y las métricas de Prometheus:</p>
+  <div class="btn-group">
+    <button class="btn-ensayo active" id="btn-normal" onclick="fijarEscenario('normal')">Confort (22–25.5 °C)</button>
+    <button class="btn-ensayo" id="btn-rango_27_30" onclick="fijarEscenario('rango_27_30')">Ensayo 27–30 °C (Precaución)</button>
+    <button class="btn-ensayo btn-peligro" id="btn-critico_35" onclick="fijarEscenario('critico_35')">Ensayo &gt;35 °C (Crítico)</button>
+    <button class="btn-ensayo btn-alerta" id="btn-invalidas" onclick="fijarEscenario('invalidas')">Ensayo Lecturas Inválidas</button>
+    <button class="btn-ensayo" id="btn-intermitente" onclick="fijarEscenario('intermitente')">Ensayo Caída de Conexión</button>
+  </div>
+
+  <div class="controles-extra">
+    <span>⏱️ <strong>Intervalo:</strong></span>
+    <button class="btn-ensayo active" id="btn-int-60" onclick="fijarIntervalo(60)">Objetivo: 60 s</button>
+    <button class="btn-ensayo" id="btn-int-3" onclick="fijarIntervalo(3)">Demo rápida: 3 s</button>
+    <button class="btn-ensayo" style="margin-left: auto;" onclick="forzarLectura()">⚡ Forzar lectura ahora</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="status-card">
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Conectando...</span>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">Temperatura</div>
+        <div class="value" id="tempValue">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Humedad</div>
+        <div class="value" id="humValue">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">IEC</div>
+        <div class="value" id="iecValue">—</div>
+      </div>
+    </div>
+
+    <div class="iec-banner" id="iecBanner">
+      <div class="nivel" id="iecNivel">Sin datos</div>
+      <div class="accion" id="iecAccion">Esperando la primera lectura...</div>
+    </div>
+
+    <div style="font-size: 0.8rem; color: var(--text-dim); text-align: center;" id="ultimaFechaHora">
+      Última lectura: —
+    </div>
+
+    <button onclick="reiniciar()">Reiniciar historial</button>
+  </div>
+
+  <div class="data-card">
+    <h2>Historial de lecturas (Fecha y Hora)</h2>
+    <div class="scroll-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha y Hora</th>
+            <th>T° (°C)</th>
+            <th>HR (%)</th>
+            <th>IEC</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="historialBody">
+          <tr><td colspan="5" class="empty">Sin datos aún</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = '';
+
+  function tagClase(nivel) {
+    if (nivel === 'error') return 'tag tag-error';
+    return 'tag tag-' + nivel;
+  }
+
+  async function actualizarDatos() {
+    try {
+      const res = await fetch(API_BASE + '/ariztia_data');
+      const data = await res.json();
+
+      const dot = document.getElementById('statusDot');
+      const stext = document.getElementById('statusText');
+
+      if (data.estado_conexion === 'Desconectado') {
+        dot.style.background = '#ff5c5c';
+        stext.textContent = 'INTERMITENTE / DESCONECTADO (Pérdida de señal)';
+      } else {
+        dot.style.background = '#4ade80';
+        stext.textContent = `Conectado — ${data.estado_conexion}`;
+      }
+
+      document.getElementById('indicadorModo').textContent = 'Modo activo: ' + data.modo_escenario;
+
+      if (data.actual) {
+        const a = data.actual;
+
+        if (a.temperatura !== null && a.temperatura !== undefined) {
+          document.getElementById('tempValue').textContent = typeof a.temperatura === 'number' ? a.temperatura.toFixed(1) + ' °C' : a.temperatura;
+          document.getElementById('humValue').textContent = typeof a.humedad === 'number' ? a.humedad.toFixed(1) + ' %' : a.humedad;
+          document.getElementById('iecValue').textContent = a.iec ? a.iec.toFixed(1) : '—';
+        } else {
+          document.getElementById('tempValue').textContent = 'N/A';
+          document.getElementById('humValue').textContent = 'N/A';
+          document.getElementById('iecValue').textContent = 'N/A';
+        }
+
+        const banner = document.getElementById('iecBanner');
+        banner.className = 'iec-banner nivel-' + (a.nivel || 'confort');
+        document.getElementById('iecNivel').textContent = a.etiqueta;
+        document.getElementById('iecAccion').textContent = a.accion;
+        document.getElementById('ultimaFechaHora').textContent = 'Última lectura: ' + (a.fecha_hora || '—');
+      }
+
+      const tbody = document.getElementById('historialBody');
+      if (!data.historial || data.historial.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin lecturas aún</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.historial.slice().reverse().map(l => {
+        const temp = typeof l.temperatura === 'number' ? l.temperatura.toFixed(1) : (l.temperatura || '—');
+        const hum = typeof l.humedad === 'number' ? l.humedad.toFixed(1) : (l.humedad || '—');
+        const iec = l.iec ? l.iec.toFixed(1) : '—';
+
+        return `
+          <tr>
+            <td><strong>${l.fecha_hora || '—'}</strong></td>
+            <td>${temp}</td>
+            <td>${hum}</td>
+            <td>${iec}</td>
+            <td><span class="${tagClase(l.nivel)}">${l.etiqueta}</span></td>
+          </tr>`;
+      }).join('');
+    } catch (err) {
+      document.getElementById('statusDot').style.background = '#ff5c5c';
+      document.getElementById('statusText').textContent = 'Sin conexión al backend';
+    }
+  }
+
+  async function fijarEscenario(tipo) {
+    document.querySelectorAll('.btn-group .btn-ensayo').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('btn-' + tipo);
+    if (btn) btn.classList.add('active');
+
+    await fetch(API_BASE + '/ariztia_set_escenario?tipo=' + tipo, { method: 'POST' });
+    actualizarDatos();
+  }
+
+  async function fijarIntervalo(segs) {
+    document.getElementById('btn-int-60').classList.toggle('active', segs === 60);
+    document.getElementById('btn-int-3').classList.toggle('active', segs === 3);
+    await fetch(API_BASE + '/ariztia_set_intervalo?segundos=' + segs, { method: 'POST' });
+  }
+
+  async function forzarLectura() {
+    await fetch(API_BASE + '/ariztia_forzar_lectura', { method: 'POST' });
+    actualizarDatos();
+  }
+
+  async function reiniciar() {
+    await fetch(API_BASE + '/ariztia_reiniciar', { method: 'POST' });
+    actualizarDatos();
+  }
+
+  // Refresco de la interfaz cada 2 segundos
+  setInterval(actualizarDatos, 2000);
+  actualizarDatos();
+</script>
+
+</body>
+</html>
