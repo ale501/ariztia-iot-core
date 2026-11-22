@@ -265,10 +265,43 @@
     }
   }
 
+  async function verificarGrafana() {
+    const el = document.getElementById('status-grafana');
+    const cardEl = document.getElementById('card-grafana');
+    const puertos = [3001, 3000];
+    let encontrado = false;
+
+    for (const p of puertos) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1200);
+      try {
+        await fetch(`http://localhost:${p}/api/health`, { method: 'GET', mode: 'no-cors', signal: controller.signal });
+        clearTimeout(timeout);
+        el.className = 'badge-status badge-online';
+        el.innerHTML = '<span class="dot-ping"></span> En línea';
+        cardEl.href = `http://localhost:${p}/d/ariztia-iot-main`;
+        const urlEl = cardEl.querySelector('.url');
+        if (urlEl) urlEl.textContent = `localhost:${p} (Docker/Local) ↗`;
+        estadosServicios['grafana'] = true;
+        encontrado = true;
+        break;
+      } catch (err) {
+        clearTimeout(timeout);
+      }
+    }
+
+    if (!encontrado) {
+      el.className = 'badge-status badge-offline';
+      el.innerHTML = '<span class="dot-ping"></span> Detenido';
+      estadosServicios['grafana'] = false;
+    }
+    actualizarGlobal();
+  }
+
   function actualizarEstados() {
     verificarServicio('http://localhost:5000/tracking_data', 'status-tracking', 'tracking');
     verificarServicio('http://localhost:5001/ariztia_data', 'status-ariztia', 'ariztia');
-    verificarServicio('http://localhost:3000/api/health', 'status-grafana', 'grafana');
+    verificarGrafana();
     verificarServicio('http://localhost:9091/-/healthy', 'status-prometheus', 'prometheus');
   }
 

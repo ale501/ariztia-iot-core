@@ -37,15 +37,22 @@ services:
     depends_on:
       - ariztia_app
 
-  # El servicio Grafana corre de forma nativa en tu Windows en el puerto 3000
-  # con tu dashboard: http://localhost:3000/goto/sdxsbw?orgId=1
-  # (Se comenta en Docker para evitar conflictos de puerto con tu instalación local)
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   container_name: grafana
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana_provisioning:/etc/grafana/provisioning
+    depends_on:
+      - postgres
+      - prometheus
 
 volumes:
   postgres_data:
+  grafana_data:
