@@ -1,90 +1,137 @@
 /*
  * ==============================================================================
- * FIRMWARE ESP32 - LECTURA REAL SENSOR DHT11 (TEMPERATURA Y HUMEDAD)
+ * FIRMWARE INTEGRAL ESP32 — ESTACIÓN AVÍCOLA ARIZTÍA IoT
  * ==============================================================================
- * Conexión del sensor DHT11:
- *   - VCC  -> Pin 3V3 del ESP32
- *   - GND  -> Pin GND del ESP32
- *   - DATA -> Pin D4 (GPIO 4) del ESP32
+ * Asignación Oficial de Pines:
+ *   - DHT11 (T° y Humedad Aire):  Pin D4 (GPIO 4)
+ *   - Horquilla (Humedad Suelo):  Pin D34 (GPIO 34 / ADC1)
+ *   - LED Verde (Confort):        Pin D18 (GPIO 18)
+ *   - LED Amarillo (Precaución):  Pin D19 (GPIO 19)
+ *   - LED Rojo (Crítico >35°C):   Pin D21 (GPIO 21)
+ *   - Buzzer (Alarma acústica):   Pin D25 (GPIO 25)
+ *   - Relé (Extractor / Vent.):   Pin D26 (GPIO 26)
  *
- * Salida: JSON directo por USB (COM6 a 115200 baudios)
- * NO requiere instalar librerías externas en Arduino IDE.
+ * Salida: JSON serial por USB (COM6 a 115200 baudios)
  * ==============================================================================
  */
 
-#define DHT_PIN 4      // Pin D4 (GPIO 4) conectado a DATA del sensor
-#define LED_PIN 2      // LED azul integrado en el ESP32
+#define PIN_DHT        4    // Sensor ambiental DHT11
+#define PIN_SUELO      34   // Sensor horquilla humedad de suelo/cama (ADC1)
+#define LED_VERDE      18   // Confort
+#define LED_AMARILLO   19   // Precaución (27-30 °C)
+#define LED_ROJO       21   // Crítico (>35 °C)
+#define PIN_BUZZER     25   // Alarma acústica
+#define PIN_RELE       26   // Actuador de ventilación
 
 const unsigned long INTERVALO_ENVIO_MS = 3000;
 unsigned long ultimoEnvio = 0;
 
-// Variables de lectura
-float temperatura = 0.0;
-float humedad = 0.0;
+float temperatura = 23.5;
+float humedad = 55.0;
+int humedadSuelo = 0;
 
-// Lector nativo del protocolo DHT11 (40 bits) sin dependencias
+// Lector de protocolo DHT11 sin librerías externas
 bool leerDHT11(float &temp, float &hum) {
   uint8_t datos[5] = {0, 0, 0, 0, 0};
 
-  // 1. Señal de inicio (Start Signal)
-  pinMode(DHT_PIN, OUTPUT);
-  digitalWrite(DHT_PIN, LOW);
-  delay(20); // Mantener bajo mínimo 18ms
-  digitalWrite(DHT_PIN, HIGH);
+  pinMode(PIN_DHT, OUTPUT);
+  digitalWrite(PIN_DHT, LOW);
+  delay(20);
+  digitalWrite(PIN_DHT, HIGH);
   delayMicroseconds(30);
-  pinMode(DHT_PIN, INPUT_PULLUP);
+  pinMode(PIN_DHT, INPUT_PULLUP);
 
-  // 2. Esperar respuesta del sensor (80us LOW + 80us HIGH)
   unsigned long timeout = micros();
-  while (digitalRead(DHT_PIN) == HIGH) {
-    if (micros() - timeout > 100) return false;
-  }
+  while (digitalRead(PIN_DHT) == HIGH) if (micros() - timeout > 100) return false;
   timeout = micros();
-  while (digitalRead(DHT_PIN) == LOW) {
-    if (micros() - timeout > 100) return false;
-  }
+  while (digitalRead(PIN_DHT) == LOW) if (micros() - timeout > 100) return false;
   timeout = micros();
-  while (digitalRead(DHT_PIN) == HIGH) {
-    if (micros() - timeout > 100) return false;
-  }
+  while (digitalRead(PIN_DHT) == HIGH) if (micros() - timeout > 100) return false;
 
-  // 3. Leer los 40 bits (5 bytes)
   for (int i = 0; i < 40; i++) {
     timeout = micros();
-    while (digitalRead(DHT_PIN) == LOW) {
-      if (micros() - timeout > 100) return false;
-    }
+    while (digitalRead(PIN_DHT) == LOW) if (micros() - timeout > 100) return false;
 
     unsigned long tInicio = micros();
-    while (digitalRead(DHT_PIN) == HIGH) {
-      if (micros() - tInicio > 150) return false;
-    }
+    while (digitalRead(PIN_DHT) == HIGH) if (micros() - tInicio > 150) return false;
 
-    // Si el pulso HIGH duró más de 40us, es un bit '1'
     if ((micros() - tInicio) > 40) {
       datos[i / 8] |= (1 << (7 - (i % 8)));
     }
   }
 
-  // 4. Verificación de Checksum (datos[4] == suma de los primeros 4 bytes)
   if (datos[4] == ((datos[0] + datos[1] + datos[2] + datos[3]) & 0xFF)) {
     hum = (float)datos[0];
     temp = (float)datos[2];
     return true;
   }
-
   return false;
+}
+
+// Lectura de la horquilla (sensor de suelo) en porcentaje 0 a 100%
+int leerHumedadCama() {
+  int valorRaw = analogRead(PIN_SUELO);
+  // En seco el valor está cerca de 4095; en agua sumergido cerca de 1500
+  int pct = map(valorRaw, 4095, 1500, 0, 100);
+  return constrain(pct, 0, 100);
+}
+
+void actualizarSemaforoYAlarmas(float t, float h) {
+  float iec = t + h;
+
+  // 1. Escenario Crítico (> 35 °C o IEC >= 105)
+  if (t >= 35.0 || iec >= 105.0) {
+    digitalWrite(LED_VERDE, LOW);
+    digitalWrite(LED_AMARILLO, LOW);
+    digitalWrite(LED_ROJO, HIGH);
+    digitalWrite(PIN_RELE, HIGH);   // Activa extractor
+    
+    // Tono de alarma acústica intermitente
+    digitalWrite(PIN_BUZZER, HIGH);
+    delay(80);
+    digitalWrite(PIN_BUZZER, LOW);
+  }
+  // 2. Escenario Advertencia / Precaución (27 a 30 °C o IEC 95-104)
+  else if (t >= 27.0 || iec >= 95.0) {
+    digitalWrite(LED_VERDE, LOW);
+    digitalWrite(LED_AMARILLO, HIGH);
+    digitalWrite(LED_ROJO, LOW);
+    digitalWrite(PIN_RELE, HIGH);   // Activa ventilación preventiva
+    digitalWrite(PIN_BUZZER, LOW);
+  }
+  // 3. Escenario Confort Normal (< 27 °C)
+  else {
+    digitalWrite(LED_VERDE, HIGH);
+    digitalWrite(LED_AMARILLO, LOW);
+    digitalWrite(LED_ROJO, LOW);
+    digitalWrite(PIN_RELE, LOW);    // Ventilación en reposo
+    digitalWrite(PIN_BUZZER, LOW);
+  }
 }
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(DHT_PIN, INPUT_PULLUP);
-  delay(1000);
 
-  Serial.println("\n==================================================");
-  Serial.println("  ESP32 - SENSOR DHT11 ACTIVO EN GPIO 4 (COM6)    ");
-  Serial.println("==================================================");
+  // Configurar pines de actuadores
+  pinMode(LED_VERDE, OUTPUT);
+  pinMode(LED_AMARILLO, OUTPUT);
+  pinMode(LED_ROJO, OUTPUT);
+  pinMode(PIN_BUZZER, OUTPUT);
+  pinMode(PIN_RELE, OUTPUT);
+
+  // Estado inicial seguro
+  digitalWrite(LED_VERDE, HIGH);
+  digitalWrite(LED_AMARILLO, LOW);
+  digitalWrite(LED_ROJO, LOW);
+  digitalWrite(PIN_BUZZER, LOW);
+  digitalWrite(PIN_RELE, LOW);
+
+  analogReadResolution(12); // ADC a 12 bits (0 a 4095)
+
+  delay(1000);
+  Serial.println("\n==========================================================");
+  Serial.println("  ESTACIÓN AVÍCOLA ARIZTÍA - HARDWARE INTEGRAL ACTIVO    ");
+  Serial.println("==========================================================");
 }
 
 void loop() {
@@ -93,29 +140,23 @@ void loop() {
   if (ahora - ultimoEnvio >= INTERVALO_ENVIO_MS || ultimoEnvio == 0) {
     ultimoEnvio = ahora;
 
-    float t = 0.0;
-    float h = 0.0;
-    bool ok = leerDHT11(t, h);
+    float t = 0.0, h = 0.0;
+    bool dhtOk = leerDHT11(t, h);
 
-    digitalWrite(LED_PIN, HIGH);
-    delay(50);
-    digitalWrite(LED_PIN, LOW);
-
-    if (ok && t > 0.0 && h > 0.0) {
+    if (dhtOk && t > 0.0 && h > 0.0) {
       temperatura = t;
       humedad = h;
-      // Envía JSON con valores REALES medidos por el sensor
-      Serial.printf("{\"temperatura\": %.1f, \"humedad\": %.1f}\n", temperatura, humedad);
-    } else {
-      // Si el sensor está recién conectándose o hubo lectura fallida
-      if (temperatura > 0.0) {
-        // Mantiene la última válida
-        Serial.printf("{\"temperatura\": %.1f, \"humedad\": %.1f}\n", temperatura, humedad);
-      } else {
-        Serial.println("{\"temperatura\": 23.5, \"humedad\": 55.0}");
-      }
     }
+
+    humedadSuelo = leerHumedadCama();
+
+    // Actualiza semáforo LED, relé de ventilación y alarma sonora
+    actualizarSemaforoYAlarmas(temperatura, humedad);
+
+    // Emisión de telemetría completa por USB
+    Serial.printf("{\"temperatura\": %.1f, \"humedad\": %.1f, \"suelo\": %d}\n",
+                  temperatura, humedad, humedadSuelo);
   }
 
-  delay(100);
+  delay(50);
 }
