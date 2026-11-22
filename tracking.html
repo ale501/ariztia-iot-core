@@ -3,196 +3,258 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vigilancia de servos</title>
+<title>Vigilancia & Tracking de Aves — Ariztía IoT</title>
+<link rel="stylesheet" href="styles.css">
 <style>
-  :root {
-    --bg-dark: #0f1115;
-    --card-bg: #1a1d24;
-    --accent: #4f7cff;
-    --accent-hover: #3a63e0;
-    --text: #e8eaf0;
-    --text-dim: #8b909c;
-    --border: #2a2e38;
-    --ok: #4ade80;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: var(--bg-dark);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 2rem;
-  }
-
-  h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
-
-  .layout {
-    display: flex;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
-
-  .video-card, .data-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.2rem;
-  }
-
-  .video-card {
-    flex: 2;
-    min-width: 320px;
-  }
-
-  .video-card img {
-    width: 100%;
-    border-radius: 8px;
-    display: block;
+  .video-container {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
     background: #000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--border);
   }
-
-  .data-card {
-    flex: 1;
-    min-width: 260px;
+  .video-container img {
+    width: 100%;
+    display: block;
+    aspect-ratio: 4/3;
+    object-fit: cover;
   }
-
-  .data-card h2 {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-    color: var(--text-dim);
-    font-weight: 500;
+  /* Overlay HUD */
+  .hud-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 2px solid rgba(6, 182, 212, 0.25);
+    border-radius: var(--radius-md);
   }
-
-  .status {
+  .hud-corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: var(--accent-cyan);
+    border-style: solid;
+  }
+  .hud-tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+  .hud-tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+  .hud-bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+  .hud-br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+  
+  .hud-header {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    right: 20px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    margin-bottom: 1rem;
+    background: rgba(10, 14, 22, 0.75);
+    backdrop-filter: blur(8px);
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
-
-  .status .dot {
+  .cam-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+  .cam-live-badge .dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--ok);
+    background: #ef4444;
+    box-shadow: 0 0 10px #ef4444;
+  }
+  .hud-stats {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
   }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-  }
-
-  th, td {
-    text-align: left;
-    padding: 0.5rem 0.4rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  th { color: var(--text-dim); font-weight: 500; }
-
-  .swatch {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 0.4rem;
-    vertical-align: middle;
-  }
-
-  button {
+  /* Tarjeta de Alerta de Agrupamiento */
+  .agrupamiento-card {
+    padding: 1.2rem;
+    border-radius: var(--radius-sm);
+    background: rgba(10, 14, 22, 0.6);
+    border: 1px solid var(--border);
     margin-top: 1rem;
-    width: 100%;
-    padding: 0.6rem;
-    background: var(--accent);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 0.85rem;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+  }
+  .agrupamiento-card.alerta-activa {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.6);
+    animation: pulse-border 1.5s infinite;
+  }
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.7); }
   }
 
-  button:hover { background: var(--accent-hover); }
-
-  .empty {
-    color: var(--text-dim);
-    font-size: 0.85rem;
-    padding: 0.6rem 0;
+  .stat-grid-track {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.8rem;
+    margin-top: 1rem;
   }
-  .back-link { display: inline-block; font-size: 0.8rem; color: var(--text-dim); text-decoration: none; margin-bottom: 1rem; }
-  .back-link:hover { color: var(--text); }
 </style>
 </head>
 <body>
 
-<a class="back-link" href="http://localhost:8000/menu.html">&larr; Volver al menú</a>
-<h1>Vigilancia de servos — cámara + tracking</h1>
-
-<div class="layout">
-  <div class="video-card">
-    <img src="/video_feed" alt="Video en vivo del tracking">
+<div style="max-width: 1200px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <a class="back-link" href="http://localhost:8000/menu.html">&larr; Volver al Centro de Mando</a>
+    <div style="display: flex; gap: 0.6rem;">
+      <a class="back-link" style="margin-bottom: 0;" href="http://localhost:3000/d/ariztia-iot-main" target="_blank">📊 Tablas en Grafana ↗</a>
+      <a class="back-link" style="margin-bottom: 0;" href="/metrics" target="_blank">📈 PromQL Scrape ↗</a>
+    </div>
   </div>
 
-  <div class="data-card">
-    <h2>Objetos detectados</h2>
-    <div class="status">
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">Conectando...</span>
+  <div style="margin-bottom: 1.5rem;">
+    <div class="brand-badge"><span class="dot-ping"></span> VISIÓN COMPUTACIONAL • OPENCV 4.x</div>
+    <h1>Tracking de Pollos & Monitoreo de Comportamiento</h1>
+    <div class="subtitle">Segmentación por sustracción de fondo MOG2, conteo centroidal y detección temprana de amontonamiento.</div>
+  </div>
+
+  <div class="layout">
+    <!-- Video Feed con visor estilo HUD -->
+    <div class="video-card" style="flex: 2; min-width: 380px;">
+      <div class="video-container">
+        <img src="/video_feed" alt="Video en vivo del tracking">
+        <div class="hud-overlay">
+          <div class="hud-corner hud-tl"></div>
+          <div class="hud-corner hud-tr"></div>
+          <div class="hud-corner hud-bl"></div>
+          <div class="hud-corner hud-br"></div>
+          <div class="hud-header">
+            <div class="cam-live-badge">
+              <span class="dot"></span> EN VIVO • ESP32-CAM / WEBCAM
+            </div>
+            <div class="hud-stats">
+              FPS: <span id="fpsHud" style="color: #38bdf8;">--</span> | RES: 640x480
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.8rem; font-size: 0.8rem; color: var(--text-dim);">
+        <span>Cámara activa: Servidor HTTP MJPEG (puerto 5000)</span>
+        <button onclick="reiniciarTracking()" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.78rem; background: rgba(255,255,255,0.05); border-color: var(--border); box-shadow: none; margin-top: 0;">
+          🔄 Reiniciar sustracción MOG2
+        </button>
+      </div>
     </div>
-    <table>
-      <thead>
-        <tr><th>ID</th><th>Posición</th><th>Tamaño</th></tr>
-      </thead>
-      <tbody id="dataBody">
-        <tr><td colspan="3" class="empty">Sin datos aún</td></tr>
-      </tbody>
-    </table>
-    <button onclick="reiniciar()">Reiniciar tracking</button>
+
+    <!-- Panel de Métricas de Detección -->
+    <div class="data-card" style="flex: 1.2; min-width: 300px;">
+      <h2>
+        <span>📊 Telemetría de Visión</span>
+        <span class="badge-status badge-online" id="statusBadge"><span class="dot-ping"></span> Activo</span>
+      </h2>
+
+      <div class="stat-grid-track">
+        <div class="metric">
+          <div class="label">Pollos Detectados</div>
+          <div class="value" id="pollitosVal" style="color: #38bdf8;">0</div>
+        </div>
+        <div class="metric">
+          <div class="label">Tasa de Cuadros</div>
+          <div class="value" id="fpsVal">0</div>
+        </div>
+      </div>
+
+      <div class="agrupamiento-card" id="agrupCard">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+            Detección de Agrupamiento
+          </span>
+          <span class="tag tag-confort" id="agrupTag">Normal</span>
+        </div>
+        <div style="font-size: 0.88rem; color: var(--text);" id="agrupDesc">
+          Comportamiento disperso y normal en el galpón.
+        </div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-dim);" id="tiempoAgrup">
+          Tiempo en grupo: 0 segundos
+        </div>
+      </div>
+
+      <div style="margin-top: 1.2rem; background: rgba(10, 14, 22, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+        <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">
+          ⚙️ Parámetros del Algoritmo
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-dim); line-height: 1.6; font-family: 'JetBrains Mono', monospace;">
+          • Umbral distancia: 120 px<br>
+          • Mínimo aglomeración: 4 aves<br>
+          • Tiempo detonación alarma: 10 s<br>
+          • Persistencia: PostgreSQL / SQLite
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-  // IP/puerto donde corre app.py — ajusta si la página se sirve desde otro origen
-  const API_BASE = '';
-
-  async function actualizarDatos() {
+  async function actualizarTracking() {
     try {
-      const res = await fetch(API_BASE + '/tracking_data');
+      const res = await fetch('/tracking_data');
       const data = await res.json();
 
-      document.getElementById('statusDot').style.background = '#4ade80';
-      document.getElementById('statusText').textContent =
-        `Conectado — ${data.total_activos} objeto(s) activo(s)`;
+      document.getElementById('pollitosVal').textContent = data.pollitos + ' / ' + data.maximo;
+      document.getElementById('fpsVal').textContent = (data.fps || 0).toFixed(1);
+      document.getElementById('fpsHud').textContent = (data.fps || 0).toFixed(1);
 
-      const tbody = document.getElementById('dataBody');
-      if (data.objetos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">Sin objetos detectados</td></tr>';
-        return;
+      const agrupCard = document.getElementById('agrupCard');
+      const agrupTag = document.getElementById('agrupTag');
+      const agrupDesc = document.getElementById('agrupDesc');
+      const tiempoAgrup = document.getElementById('tiempoAgrup');
+
+      if (data.alerta) {
+        agrupCard.className = 'agrupamiento-card alerta-activa';
+        agrupTag.className = 'tag tag-critico';
+        agrupTag.textContent = 'ALERTA ACTIVA';
+        agrupDesc.textContent = '🚨 ¡Agrupamiento crítico prolongado! Posible estrés o foco de frío.';
+      } else if (data.agrupamiento) {
+        agrupCard.className = 'agrupamiento-card';
+        agrupTag.className = 'tag tag-precaucion';
+        agrupTag.textContent = 'Agrupamiento detectado';
+        agrupDesc.textContent = '⚠️ Concentración de aves en curso. Cronómetro activo.';
+      } else {
+        agrupCard.className = 'agrupamiento-card';
+        agrupTag.className = 'tag tag-confort';
+        agrupTag.textContent = 'Normal';
+        agrupDesc.textContent = 'Comportamiento disperso y normal en el galpón.';
       }
 
-      tbody.innerHTML = data.objetos.map(obj => `
-        <tr>
-          <td>ID ${obj.id}</td>
-          <td>(${obj.cx}, ${obj.cy})</td>
-          <td>${obj.w} × ${obj.h}</td>
-        </tr>
-      `).join('');
+      tiempoAgrup.textContent = `Tiempo en grupo: ${data.tiempo_agrupamiento || 0} s / 10 s`;
+
+      const statusBadge = document.getElementById('statusBadge');
+      if (data.estado === 'en pausa') {
+        statusBadge.className = 'badge-status badge-offline';
+        statusBadge.innerHTML = '<span class="dot-ping"></span> En pausa';
+      } else {
+        statusBadge.className = 'badge-status badge-online';
+        statusBadge.innerHTML = '<span class="dot-ping"></span> ' + (data.estado || 'Activo');
+      }
+
     } catch (err) {
-      document.getElementById('statusDot').style.background = '#ff5c5c';
-      document.getElementById('statusText').textContent = 'Sin conexión al backend';
+      document.getElementById('statusBadge').className = 'badge-status badge-offline';
+      document.getElementById('statusBadge').innerHTML = '<span class="dot-ping"></span> Desconectado';
     }
   }
 
-  async function reiniciar() {
-    await fetch(API_BASE + '/reiniciar', { method: 'POST' });
+  async function reiniciarTracking() {
+    await fetch('/reiniciar', { method: 'POST' });
+    actualizarTracking();
   }
 
-  setInterval(actualizarDatos, 1000);
-  actualizarDatos();
+  setInterval(actualizarTracking, 1000);
+  actualizarTracking();
 </script>
 
 </body>

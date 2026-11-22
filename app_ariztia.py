@@ -5,6 +5,9 @@ import time
 from collections import deque
 from datetime import datetime
 
+import database
+database.inicializar_bd()
+
 from flask import Flask, jsonify, send_from_directory, Response, request
 from prometheus_client import Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
 
@@ -160,6 +163,21 @@ class SimuladorAriztia:
             self.actual = lectura
             self.historial.append(lectura)
             self.estado_conexion = estado
+
+        # Guardar en base de datos (PostgreSQL / SQLite) para que Grafana pueda mostrar tablas SQL
+        try:
+            database.guardar_lectura_ambiental(
+                temp=temp,
+                hum=hum,
+                iec=iec,
+                nivel=nivel,
+                etiqueta=etiqueta,
+                accion=accion,
+                origen=origen,
+                estado_conexion=estado
+            )
+        except Exception:
+            pass
 
         return lectura
 

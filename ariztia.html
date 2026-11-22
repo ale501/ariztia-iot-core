@@ -3,28 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoreo Ariztía — Estrés calórico</title>
+<title>Monitoreo Ambiental & Estrés Calórico — Ariztía IoT</title>
 <link rel="stylesheet" href="styles.css">
+<!-- Chart.js para telemetría en tiempo real -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   .panel-ensayos {
-    background: #151821;
+    background: var(--card-bg);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.2rem;
+    border-radius: var(--radius-md);
+    padding: 1.4rem;
     margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-card);
   }
   .panel-ensayos h2 {
-    font-size: 1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
     color: var(--text);
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
   .panel-ensayos p {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-bottom: 0.9rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
   }
   .btn-group {
     display: flex;
@@ -34,137 +39,337 @@
   .btn-ensayo {
     margin-top: 0;
     width: auto;
-    padding: 0.5rem 0.9rem;
+    padding: 0.55rem 1rem;
     font-size: 0.82rem;
-    border-radius: 6px;
-    background: #232834;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border);
     color: var(--text);
     cursor: pointer;
-    transition: all 0.2s ease;
+    box-shadow: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
   }
   .btn-ensayo:hover {
-    background: var(--accent);
-    color: white;
+    background: rgba(37, 99, 235, 0.2);
+    border-color: rgba(37, 99, 235, 0.5);
+    color: #fff;
+    transform: translateY(-1px);
   }
   .btn-ensayo.active {
-    background: var(--accent);
-    border-color: var(--accent-hover);
-    font-weight: 600;
+    background: var(--accent-gradient);
+    border-color: var(--border-accent);
+    color: white;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
   }
-  .btn-peligro.active {
-    background: #ff5c5c !important;
+  .btn-ensayo.btn-peligro.active {
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5) !important;
   }
-  .btn-alerta.active {
-    background: #facc15 !important;
+  .btn-ensayo.btn-alerta.active {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important;
+    border-color: rgba(245, 158, 11, 0.6) !important;
     color: #000 !important;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
   }
   .controles-extra {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.8rem;
     align-items: center;
-    margin-top: 0.8rem;
-    padding-top: 0.8rem;
+    margin-top: 1.1rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--border);
-    font-size: 0.82rem;
-    color: var(--text-dim);
+    font-size: 0.85rem;
+    color: var(--text-muted);
   }
-  .tag-error {
-    background: rgba(255, 92, 92, 0.25);
-    color: #ff5c5c;
+  .mini-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    margin-top: 0.6rem;
+    overflow: hidden;
+    position: relative;
+  }
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.5s ease, background-color 0.5s ease;
+    width: 0%;
+  }
+  .chart-container {
+    margin-top: 1.2rem;
+    background: rgba(10, 14, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    position: relative;
+    height: 220px;
+  }
+  .export-btn {
+    width: auto;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.76rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--accent-cyan);
+    box-shadow: none;
+    margin-top: 0;
+  }
+  .export-btn:hover {
+    background: rgba(6, 182, 212, 0.15);
+    border-color: rgba(6, 182, 212, 0.4);
   }
 </style>
 </head>
 <body>
 
-<a class="back-link" href="http://localhost:8000/menu.html">&larr; Volver al menú</a>
-<h1>Monitoreo Ariztía — Temperatura, Humedad e IEC</h1>
-<div class="subtitle">Muestreo objetivo: <strong>cada 60 segundos</strong> | Evaluación de estrés calórico (IEC = T°C + HR%).</div>
-
-<!-- PANEL DE ENSAYOS Y PRUEBAS -->
-<div class="panel-ensayos">
-  <h2>
-    <span>🧪 Ensayos de Prueba (Parámetros requeridos)</span>
-    <span id="indicadorModo" style="font-size: 0.8rem; color: var(--accent);">Modo: Normal</span>
-  </h2>
-  <p>Selecciona un escenario para comprobar la respuesta del sistema, las alertas y las métricas de Prometheus:</p>
-  <div class="btn-group">
-    <button class="btn-ensayo active" id="btn-normal" onclick="fijarEscenario('normal')">Confort (22–25.5 °C)</button>
-    <button class="btn-ensayo" id="btn-rango_27_30" onclick="fijarEscenario('rango_27_30')">Ensayo 27–30 °C (Precaución)</button>
-    <button class="btn-ensayo btn-peligro" id="btn-critico_35" onclick="fijarEscenario('critico_35')">Ensayo &gt;35 °C (Crítico)</button>
-    <button class="btn-ensayo btn-alerta" id="btn-invalidas" onclick="fijarEscenario('invalidas')">Ensayo Lecturas Inválidas</button>
-    <button class="btn-ensayo" id="btn-intermitente" onclick="fijarEscenario('intermitente')">Ensayo Caída de Conexión</button>
+<div style="max-width: 1200px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <a class="back-link" href="http://localhost:8000/menu.html">&larr; Volver al Centro de Mando</a>
+    <div style="display: flex; gap: 0.6rem;">
+      <a class="back-link" style="margin-bottom: 0;" href="http://localhost:3000/d/ariztia-iot-main" target="_blank">📊 Ver en Grafana ↗</a>
+      <a class="back-link" style="margin-bottom: 0;" href="/metrics" target="_blank">📈 PromQL Métricas ↗</a>
+    </div>
   </div>
 
-  <div class="controles-extra">
-    <span>⏱️ <strong>Intervalo:</strong></span>
-    <button class="btn-ensayo active" id="btn-int-60" onclick="fijarIntervalo(60)">Objetivo: 60 s</button>
-    <button class="btn-ensayo" id="btn-int-3" onclick="fijarIntervalo(3)">Demo rápida: 3 s</button>
-    <button class="btn-ensayo" style="margin-left: auto;" onclick="forzarLectura()">⚡ Forzar lectura ahora</button>
-  </div>
-</div>
-
-<div class="layout">
-  <div class="status-card">
-    <div class="status">
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">Conectando...</span>
-    </div>
-
-    <div class="metrics">
-      <div class="metric">
-        <div class="label">Temperatura</div>
-        <div class="value" id="tempValue">—</div>
-      </div>
-      <div class="metric">
-        <div class="label">Humedad</div>
-        <div class="value" id="humValue">—</div>
-      </div>
-      <div class="metric">
-        <div class="label">IEC</div>
-        <div class="value" id="iecValue">—</div>
-      </div>
-    </div>
-
-    <div class="iec-banner" id="iecBanner">
-      <div class="nivel" id="iecNivel">Sin datos</div>
-      <div class="accion" id="iecAccion">Esperando la primera lectura...</div>
-    </div>
-
-    <div style="font-size: 0.8rem; color: var(--text-dim); text-align: center;" id="ultimaFechaHora">
-      Última lectura: —
-    </div>
-
-    <button onclick="reiniciar()">Reiniciar historial</button>
+  <div style="margin-bottom: 1.5rem;">
+    <div class="brand-badge"><span class="dot-ping"></span> SISTEMA AVÍCOLA • SENSORICA ESP32 / COM6</div>
+    <h1>Monitoreo Ambiental & Índice de Estrés Calórico (IEC)</h1>
+    <div class="subtitle">Muestreo continuo cada 60 s | Cálculo de bioseguridad ambiental: <code>IEC = T°C + HR%</code></div>
   </div>
 
-  <div class="data-card">
-    <h2>Historial de lecturas (Fecha y Hora)</h2>
-    <div class="scroll-body">
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha y Hora</th>
-            <th>T° (°C)</th>
-            <th>HR (%)</th>
-            <th>IEC</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody id="historialBody">
-          <tr><td colspan="5" class="empty">Sin datos aún</td></tr>
-        </tbody>
-      </table>
+  <!-- PANEL DE ENSAYOS OPERACIONALES -->
+  <div class="panel-ensayos">
+    <h2>
+      <span>🧪 Ensayos de Prueba Operacional (Norma Ariztía)</span>
+      <span id="indicadorModo" class="tag tag-confort">Modo: Confort Normal</span>
+    </h2>
+    <p>Simula o inyecta escenarios requeridos para validar umbrales, alarmas acústicas, acuse de recibo y persistencia en PostgreSQL:</p>
+    
+    <div class="btn-group">
+      <button class="btn-ensayo active" id="btn-normal" onclick="fijarEscenario('normal')">
+        <span>🟢 Confort (22–25.5 °C)</span>
+      </button>
+      <button class="btn-ensayo" id="btn-rango_27_30" onclick="fijarEscenario('rango_27_30')">
+        <span>🟡 Ensayo 27–30 °C (Precaución)</span>
+      </button>
+      <button class="btn-ensayo btn-peligro" id="btn-critico_35" onclick="fijarEscenario('critico_35')">
+        <span>🔴 Ensayo &gt;35 °C (Crítico / Alerta)</span>
+      </button>
+      <button class="btn-ensayo btn-alerta" id="btn-invalidas" onclick="fijarEscenario('invalidas')">
+        <span>⚠️ Ensayo Lecturas Inválidas</span>
+      </button>
+      <button class="btn-ensayo" id="btn-intermitente" onclick="fijarEscenario('intermitente')">
+        <span>🔌 Ensayo Caída de Conexión</span>
+      </button>
+    </div>
+
+    <div class="controles-extra">
+      <span>⏱️ <strong>Frecuencia:</strong></span>
+      <button class="btn-ensayo active" id="btn-int-60" onclick="fijarIntervalo(60)">Objetivo: 60 s</button>
+      <button class="btn-ensayo" id="btn-int-3" onclick="fijarIntervalo(3)">Demo rápida: 3 s</button>
+      <button class="btn-ensayo" style="margin-left: auto; background: rgba(37,99,235,0.2); border-color: rgba(37,99,235,0.4);" onclick="forzarLectura()">
+        ⚡ Forzar lectura inmediata
+      </button>
+    </div>
+  </div>
+
+  <!-- DISPOSICIÓN PRINCIPAL -->
+  <div class="layout">
+    <!-- Tarjeta Izquierda: Estado y Métricas -->
+    <div class="status-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="status">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Conectando...</span>
+        </div>
+        <span id="ultimaFechaHora" style="font-size: 0.78rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">
+          --:--:--
+        </span>
+      </div>
+
+      <!-- 3 Métricas con barras -->
+      <div class="metrics">
+        <div class="metric">
+          <div class="label">Temperatura</div>
+          <div class="value" id="tempValue">—</div>
+          <div class="mini-bar">
+            <div class="mini-bar-fill" id="tempBar" style="background: #3b82f6;"></div>
+          </div>
+        </div>
+
+        <div class="metric">
+          <div class="label">Humedad</div>
+          <div class="value" id="humValue">—</div>
+          <div class="mini-bar">
+            <div class="mini-bar-fill" id="humBar" style="background: #06b6d4;"></div>
+          </div>
+        </div>
+
+        <div class="metric">
+          <div class="label">Índice IEC</div>
+          <div class="value" id="iecValue">—</div>
+          <div class="mini-bar">
+            <div class="mini-bar-fill" id="iecBar" style="background: #10b981;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Banner IEC con recomendación agronómica -->
+      <div class="iec-banner nivel-confort" id="iecBanner">
+        <div class="nivel" id="iecNivel">Sin datos</div>
+        <div class="accion" id="iecAccion">Esperando la primera lectura de telemetría...</div>
+      </div>
+
+      <!-- Gráfico interactivo Chart.js integrado -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">Curva Térmica & Humedad (Tiempo Real)</span>
+          <span style="font-size: 0.72rem; color: var(--text-dim);">Actualizado en vivo</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="liveChart"></canvas>
+        </div>
+      </div>
+
+      <button onclick="reiniciar()" style="background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text-muted); box-shadow: none;">
+        🔄 Reiniciar historial de lecturas
+      </button>
+    </div>
+
+    <!-- Tarjeta Derecha: Tabla Histórica -->
+    <div class="data-card">
+      <h2>
+        <span>📋 Historial de Lecturas (PostgreSQL / SQLite)</span>
+        <button class="export-btn" onclick="exportarCSV()">📥 Descargar CSV</button>
+      </h2>
+      <div class="scroll-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha y Hora</th>
+              <th>T° (°C)</th>
+              <th>HR (%)</th>
+              <th>IEC</th>
+              <th>Etiqueta / Ensayo</th>
+            </tr>
+          </thead>
+          <tbody id="historialBody">
+            <tr><td colspan="5" class="empty">Sin lecturas registradas aún</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
   const API_BASE = '';
+  let chartInstance = null;
+  let historialCompleto = [];
+
+  // Inicializar Gráfico Chart.js
+  function inicializarGrafico() {
+    const ctx = document.getElementById('liveChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Temperatura (°C)',
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            data: [],
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 2.5,
+            fill: true,
+            yAxisID: 'yTemp'
+          },
+          {
+            label: 'Humedad (%)',
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.08)',
+            data: [],
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 2.5,
+            fill: true,
+            yAxisID: 'yHum'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 20, 28, 0.9)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: 1
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } }
+          },
+          yTemp: {
+            type: 'linear',
+            position: 'left',
+            min: 15,
+            max: 45,
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#f59e0b', font: { family: 'JetBrains Mono', size: 10 } }
+          },
+          yHum: {
+            type: 'linear',
+            position: 'right',
+            min: 20,
+            max: 100,
+            grid: { drawOnChartArea: false },
+            ticks: { color: '#06b6d4', font: { family: 'JetBrains Mono', size: 10 } }
+          }
+        }
+      }
+    });
+  }
 
   function tagClase(nivel) {
     if (nivel === 'error') return 'tag tag-error';
-    return 'tag tag-' + nivel;
+    return 'tag tag-' + (nivel || 'confort');
+  }
+
+  function actualizarBarras(temp, hum, iec) {
+    const tempBar = document.getElementById('tempBar');
+    const humBar = document.getElementById('humBar');
+    const iecBar = document.getElementById('iecBar');
+
+    if (typeof temp === 'number') {
+      const pctTemp = Math.min(Math.max(((temp - 15) / (45 - 15)) * 100, 0), 100);
+      tempBar.style.width = pctTemp + '%';
+      tempBar.style.background = temp >= 35 ? '#ef4444' : temp >= 27 ? '#f59e0b' : '#10b981';
+    }
+    if (typeof hum === 'number') {
+      const pctHum = Math.min(Math.max(hum, 0), 100);
+      humBar.style.width = pctHum + '%';
+    }
+    if (typeof iec === 'number') {
+      const pctIec = Math.min(Math.max(((iec - 60) / (120 - 60)) * 100, 0), 100);
+      iecBar.style.width = pctIec + '%';
+      iecBar.style.background = iec >= 105 ? '#ef4444' : iec >= 95 ? '#f59e0b' : '#10b981';
+    }
   }
 
   async function actualizarDatos() {
@@ -176,22 +381,32 @@
       const stext = document.getElementById('statusText');
 
       if (data.estado_conexion === 'Desconectado') {
-        dot.style.background = '#ff5c5c';
-        stext.textContent = 'INTERMITENTE / DESCONECTADO (Pérdida de señal)';
+        dot.style.background = '#ef4444';
+        dot.style.color = '#ef4444';
+        stext.textContent = 'INTERMITENTE / DESCONECTADO';
       } else {
-        dot.style.background = '#4ade80';
+        dot.style.background = '#10b981';
+        dot.style.color = '#10b981';
         stext.textContent = `Conectado — ${data.estado_conexion}`;
       }
 
-      document.getElementById('indicadorModo').textContent = 'Modo activo: ' + data.modo_escenario;
+      const modoEl = document.getElementById('indicadorModo');
+      modoEl.textContent = 'Modo: ' + data.modo_escenario.toUpperCase();
+      modoEl.className = 'tag ' + (data.modo_escenario === 'critico_35' ? 'tag-critico' : data.modo_escenario.includes('27') ? 'tag-precaucion' : 'tag-confort');
 
       if (data.actual) {
         const a = data.actual;
 
         if (a.temperatura !== null && a.temperatura !== undefined) {
-          document.getElementById('tempValue').textContent = typeof a.temperatura === 'number' ? a.temperatura.toFixed(1) + ' °C' : a.temperatura;
-          document.getElementById('humValue').textContent = typeof a.humedad === 'number' ? a.humedad.toFixed(1) + ' %' : a.humedad;
-          document.getElementById('iecValue').textContent = a.iec ? a.iec.toFixed(1) : '—';
+          const tNum = typeof a.temperatura === 'number' ? a.temperatura : parseFloat(a.temperatura);
+          const hNum = typeof a.humedad === 'number' ? a.humedad : parseFloat(a.humedad);
+          const iecNum = a.iec ? (typeof a.iec === 'number' ? a.iec : parseFloat(a.iec)) : null;
+
+          document.getElementById('tempValue').textContent = !isNaN(tNum) ? tNum.toFixed(1) + ' °C' : a.temperatura;
+          document.getElementById('humValue').textContent = !isNaN(hNum) ? hNum.toFixed(1) + ' %' : a.humedad;
+          document.getElementById('iecValue').textContent = iecNum ? iecNum.toFixed(1) : '—';
+
+          actualizarBarras(tNum, hNum, iecNum);
         } else {
           document.getElementById('tempValue').textContent = 'N/A';
           document.getElementById('humValue').textContent = 'N/A';
@@ -200,34 +415,45 @@
 
         const banner = document.getElementById('iecBanner');
         banner.className = 'iec-banner nivel-' + (a.nivel || 'confort');
-        document.getElementById('iecNivel').textContent = a.etiqueta;
-        document.getElementById('iecAccion').textContent = a.accion;
-        document.getElementById('ultimaFechaHora').textContent = 'Última lectura: ' + (a.fecha_hora || '—');
+        document.getElementById('iecNivel').textContent = a.etiqueta || 'Normal';
+        document.getElementById('iecAccion').textContent = a.accion || 'Registro normal';
+        document.getElementById('ultimaFechaHora').textContent = (a.fecha_hora || '—');
       }
 
+      historialCompleto = data.historial || [];
       const tbody = document.getElementById('historialBody');
-      if (!data.historial || data.historial.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin lecturas aún</td></tr>';
+      if (!historialCompleto.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin lecturas registradas aún</td></tr>';
         return;
       }
 
-      tbody.innerHTML = data.historial.slice().reverse().map(l => {
-        const temp = typeof l.temperatura === 'number' ? l.temperatura.toFixed(1) : (l.temperatura || '—');
-        const hum = typeof l.humedad === 'number' ? l.humedad.toFixed(1) : (l.humedad || '—');
+      tbody.innerHTML = historialCompleto.slice().reverse().map(l => {
+        const temp = typeof l.temperatura === 'number' ? l.temperatura.toFixed(1) + ' °C' : (l.temperatura || '—');
+        const hum = typeof l.humedad === 'number' ? l.humedad.toFixed(1) + ' %' : (l.humedad || '—');
         const iec = l.iec ? l.iec.toFixed(1) : '—';
 
         return `
           <tr>
-            <td><strong>${l.fecha_hora || '—'}</strong></td>
-            <td>${temp}</td>
-            <td>${hum}</td>
-            <td>${iec}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">${l.fecha_hora || '—'}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #f59e0b;">${temp}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #06b6d4;">${hum}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700;">${iec}</td>
             <td><span class="${tagClase(l.nivel)}">${l.etiqueta}</span></td>
           </tr>`;
       }).join('');
+
+      // Actualizar Gráfico
+      if (chartInstance && historialCompleto.length > 0) {
+        const puntos = historialCompleto.slice(-15);
+        chartInstance.data.labels = puntos.map(p => (p.fecha_hora || '').split(' ')[1] || '');
+        chartInstance.data.datasets[0].data = puntos.map(p => typeof p.temperatura === 'number' ? p.temperatura : null);
+        chartInstance.data.datasets[1].data = puntos.map(p => typeof p.humedad === 'number' ? p.humedad : null);
+        chartInstance.update();
+      }
+
     } catch (err) {
-      document.getElementById('statusDot').style.background = '#ff5c5c';
-      document.getElementById('statusText').textContent = 'Sin conexión al backend';
+      document.getElementById('statusDot').style.background = '#ef4444';
+      document.getElementById('statusText').textContent = 'Sin conexión con la API';
     }
   }
 
@@ -252,11 +478,31 @@
   }
 
   async function reiniciar() {
-    await fetch(API_BASE + '/ariztia_reiniciar', { method: 'POST' });
-    actualizarDatos();
+    if (confirm('¿Deseas reiniciar el historial de lecturas temporales?')) {
+      await fetch(API_BASE + '/ariztia_reiniciar', { method: 'POST' });
+      actualizarDatos();
+    }
   }
 
-  // Refresco de la interfaz cada 2 segundos
+  function exportarCSV() {
+    if (!historialCompleto.length) {
+      alert('No hay datos disponibles para exportar.');
+      return;
+    }
+    let csv = 'Fecha_Hora,Temperatura_C,Humedad_Pct,IEC,Etiqueta,Nivel\n';
+    historialCompleto.forEach(r => {
+      csv += `"${r.fecha_hora || ''}",${r.temperatura || ''},${r.humedad || ''},${r.iec || ''},"${r.etiqueta || ''}","${r.nivel || ''}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ariztia_telemetria_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  inicializarGrafico();
   setInterval(actualizarDatos, 2000);
   actualizarDatos();
 </script>

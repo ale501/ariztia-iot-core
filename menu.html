@@ -3,61 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel de proyectos</title>
+<title>Centro de Mando — Ariztía IoT</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  .header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .system-stats {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+  }
+  .stat-pill {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+  }
+  .clock-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--accent-cyan);
+    font-weight: 700;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .card-footer-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.6rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+  }
+  .card-action-btn {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #60a5fa;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+  .card:hover .card-action-btn {
+    color: var(--accent-cyan);
+    transform: translateX(3px);
+  }
+  .tech-pills {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.2rem;
+  }
+  .tech-tag {
+    font-size: 0.68rem;
+    padding: 0.15rem 0.45rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+</style>
 </head>
 <body>
 
 <div class="topbar">
-  <div>
-    <h1>Panel de proyectos</h1>
-    <div class="subtitle">Acceso rápido a las secciones del sistema avícola e industrial.</div>
+  <div class="header-content">
+    <div class="brand-badge"><span class="dot-ping"></span> ARIZTÍA AGRO-INDUSTRIA • NODO PRINCIPAL</div>
+    <h1>Centro de Mando & Telemetría</h1>
+    <div class="subtitle" style="margin-bottom: 0;">Plataforma unificada de visión computacional, monitoreo de galpones y analítica.</div>
   </div>
-  <a class="logout-link" href="#" onclick="cerrarSesion()">Cerrar sesión</a>
+  
+  <div class="system-stats">
+    <div class="stat-pill">
+      <span>🕒</span>
+      <span class="clock-display" id="relojLocal">--:--:--</span>
+    </div>
+    <div class="stat-pill" id="globalPill">
+      <span class="dot-ping" id="globalDot"></span>
+      <span id="globalEstado">Escaneando servicios...</span>
+    </div>
+    <a class="logout-link" href="#" onclick="cerrarSesion()">Cerrar sesión ⏏</a>
+  </div>
 </div>
 
 <div class="grid">
-  <a class="card" href="http://localhost:5000">
-    <div class="icono">🎯</div>
-    <div class="titulo">Tracking de pollitos (OpenCV)</div>
-    <div class="desc">Video en vivo + detección y alertas de agrupamiento.</div>
-    <div class="url">localhost:5000</div>
+  <!-- Tarjeta 1: Tracking OpenCV -->
+  <a class="card" href="http://localhost:5000" id="card-tracking">
+    <div class="card-top">
+      <div class="icono-wrapper">🎯</div>
+      <span class="badge-status badge-checking" id="status-tracking"><span class="dot-ping"></span> Comprobando...</span>
+    </div>
+    <div class="titulo">Visión & Tracking de Pollos</div>
+    <div class="desc">Detección de centroides, conteo activo por sustracción MOG2 y alertas de agrupamiento/estrés en tiempo real.</div>
+    <div class="tech-pills">
+      <span class="tech-tag">OpenCV 4.x</span>
+      <span class="tech-tag">MOG2</span>
+      <span class="tech-tag">MJPEG Stream</span>
+    </div>
+    <div class="card-footer-action">
+      <span class="url">localhost:5000</span>
+      <span class="card-action-btn">Ver cámara &rarr;</span>
+    </div>
   </a>
 
-  <a class="card" href="http://localhost:5001">
-    <div class="icono">🌡️</div>
-    <div class="titulo">Monitoreo Ariztía (IEC)</div>
-    <div class="desc">Temperatura, humedad, estrés calórico y ensayos.</div>
-    <div class="url">localhost:5001</div>
+  <!-- Tarjeta 2: Monitoreo Ariztía -->
+  <a class="card" href="http://localhost:5001" id="card-ariztia">
+    <div class="card-top">
+      <div class="icono-wrapper">🌡️</div>
+      <span class="badge-status badge-checking" id="status-ariztia"><span class="dot-ping"></span> Comprobando...</span>
+    </div>
+    <div class="titulo">Monitoreo Ambiental & IEC</div>
+    <div class="desc">Índice de Estrés Calórico en vivo, control de ensayos operacionales (27–30 °C, &gt;35 °C), filtrado de anomalías y puente serie ESP32.</div>
+    <div class="tech-pills">
+      <span class="tech-tag">Flask API</span>
+      <span class="tech-tag">IEC Formula</span>
+      <span class="tech-tag">Muestreo 60s</span>
+    </div>
+    <div class="card-footer-action">
+      <span class="url">localhost:5001</span>
+      <span class="card-action-btn">Panel Ambiental &rarr;</span>
+    </div>
   </a>
 
-  <a class="card" href="http://localhost:3000" target="_blank">
-    <div class="icono">📊</div>
-    <div class="titulo">Dashboard Grafana</div>
-    <div class="desc">Visualización analítica en tiempo real e histórico.</div>
-    <div class="url">localhost:3000 ↗</div>
+  <!-- Tarjeta 3: Grafana Dashboard -->
+  <a class="card" href="http://localhost:3000/d/ariztia-iot-main" target="_blank" id="card-grafana">
+    <div class="card-top">
+      <div class="icono-wrapper">📊</div>
+      <span class="badge-status badge-checking" id="status-grafana"><span class="dot-ping"></span> Comprobando...</span>
+    </div>
+    <div class="titulo">Dashboard Analítico Grafana</div>
+    <div class="desc">Tableros industriales provisionados con métricas de series temporales, tablas relacionales PostgreSQL y monitoreo histórico.</div>
+    <div class="tech-pills">
+      <span class="tech-tag">Grafana v13</span>
+      <span class="tech-tag">PostgreSQL Tablas</span>
+      <span class="tech-tag">Auto-provisioned</span>
+    </div>
+    <div class="card-footer-action">
+      <span class="url">localhost:3000 (ariztia-iot) ↗</span>
+      <span class="card-action-btn">Abrir Grafana ↗</span>
+    </div>
   </a>
 
-  <a class="card" href="http://localhost:9090" target="_blank">
-    <div class="icono">📈</div>
+  <!-- Tarjeta 4: Servidor Prometheus -->
+  <a class="card" href="http://localhost:9091" target="_blank" id="card-prometheus">
+    <div class="card-top">
+      <div class="icono-wrapper">📈</div>
+      <span class="badge-status badge-checking" id="status-prometheus"><span class="dot-ping"></span> Comprobando...</span>
+    </div>
     <div class="titulo">Servidor Prometheus</div>
-    <div class="desc">Estado de targets, raspado de métricas y consultas PromQL.</div>
-    <div class="url">localhost:9090 ↗</div>
+    <div class="desc">Colector de telemetría de alta resolución, raspado de endpoints de métricas y motor de consultas PromQL.</div>
+    <div class="tech-pills">
+      <span class="tech-tag">Prometheus 3.x</span>
+      <span class="tech-tag">Scrape 2s</span>
+      <span class="tech-tag">Gauges & Counters</span>
+    </div>
+    <div class="card-footer-action">
+      <span class="url">localhost:9091 ↗</span>
+      <span class="card-action-btn">Explorador PromQL ↗</span>
+    </div>
   </a>
 </div>
 
+<!-- Barra de Infraestructura Inferior -->
+<div class="nota">
+  <div>
+    <strong>🏗️ Infraestructura y Almacenamiento:</strong>
+    Base de datos relacional principal: <code>PostgreSQL (Docker 5432: ariztia_db)</code> con persistencia de lecturas y eventos.
+  </div>
+  <div>
+    Hardware IoT: <code>ESP32 (COM6 @ 115200 baudios)</code> | Failover local: <code>SQLite (tracking.db)</code>
+  </div>
+</div>
+
 <script>
-  // Validar sesión leyendo tanto localStorage como sessionStorage
+  // Validar sesión
   let sesionValida = false;
   try {
     sesionValida = (localStorage.getItem('sesionActiva') === 'true') || 
                    (sessionStorage.getItem('sesionActiva') === 'true');
   } catch(e) {
-    sesionValida = true; // Si las cookies o storage están bloqueados por el navegador, no bloquear al usuario
+    sesionValida = true;
   }
 
   if (!sesionValida) {
-    // Si no hay sesión, volver al login
     window.location.href = 'login.html';
   }
 
@@ -66,6 +205,75 @@
     try { sessionStorage.removeItem('sesionActiva'); } catch(e) {}
     window.location.href = 'login.html';
   }
+
+  // Reloj en tiempo real
+  function actualizarReloj() {
+    const ahora = new Date();
+    const tiempoStr = ahora.toLocaleTimeString('es-CL', { hour12: false });
+    document.getElementById('relojLocal').textContent = tiempoStr;
+  }
+  setInterval(actualizarReloj, 1000);
+  actualizarReloj();
+
+  let estadosServicios = {
+    tracking: false,
+    ariztia: false,
+    grafana: false,
+    prometheus: false
+  };
+
+  async function verificarServicio(url, elementId, servicioKey, timeoutMs = 1800) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      await fetch(url, { method: 'GET', mode: 'no-cors', signal: controller.signal });
+      clearTimeout(timeout);
+      el.className = 'badge-status badge-online';
+      el.innerHTML = '<span class="dot-ping"></span> En línea';
+      estadosServicios[servicioKey] = true;
+    } catch (err) {
+      clearTimeout(timeout);
+      el.className = 'badge-status badge-offline';
+      el.innerHTML = '<span class="dot-ping"></span> Detenido';
+      estadosServicios[servicioKey] = false;
+    }
+    actualizarGlobal();
+  }
+
+  function actualizarGlobal() {
+    const activos = Object.values(estadosServicios).filter(Boolean).length;
+    const total = 4;
+    const estadoEl = document.getElementById('globalEstado');
+    const dotEl = document.getElementById('globalDot');
+    
+    if (activos === total) {
+      estadoEl.textContent = `${activos}/${total} Servicios Operativos`;
+      dotEl.style.background = 'var(--ok)';
+      dotEl.style.color = 'var(--ok)';
+    } else if (activos > 0) {
+      estadoEl.textContent = `${activos}/${total} En Línea (Parcial)`;
+      dotEl.style.background = 'var(--warn)';
+      dotEl.style.color = 'var(--warn)';
+    } else {
+      estadoEl.textContent = `0/${total} Servicios Detenidos`;
+      dotEl.style.background = 'var(--danger)';
+      dotEl.style.color = 'var(--danger)';
+    }
+  }
+
+  function actualizarEstados() {
+    verificarServicio('http://localhost:5000/tracking_data', 'status-tracking', 'tracking');
+    verificarServicio('http://localhost:5001/ariztia_data', 'status-ariztia', 'ariztia');
+    verificarServicio('http://localhost:3000/api/health', 'status-grafana', 'grafana');
+    verificarServicio('http://localhost:9091/-/healthy', 'status-prometheus', 'prometheus');
+  }
+
+  actualizarEstados();
+  setInterval(actualizarEstados, 4000);
 </script>
 
 </body>

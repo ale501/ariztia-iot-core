@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_ariztia
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ariztia_db
+      - POSTGRES_USER=ariztia
+      - POSTGRES_PASSWORD=ariztia_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   ariztia_app:
     build: .
     container_name: ariztia_monitoreo
@@ -9,28 +22,30 @@ services:
       - "5001:5001"
     environment:
       - PYTHONUNBUFFERED=1
+      - POSTGRES_HOST=postgres
+    depends_on:
+      - postgres
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "9091:9090"
     volumes:
       - ./prometheus-docker.yml:/etc/prometheus/prometheus.yml
     depends_on:
       - ariztia_app
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - ./grafana-13.3.0/conf/provisioning/datasources:/etc/grafana/provisioning/datasources
-    depends_on:
-      - prometheus
+  # El servicio Grafana corre de forma nativa en tu Windows en el puerto 3000
+  # con tu dashboard: http://localhost:3000/goto/sdxsbw?orgId=1
+  # (Se comenta en Docker para evitar conflictos de puerto con tu instalación local)
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+
+volumes:
+  postgres_data:

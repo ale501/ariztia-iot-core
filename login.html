@@ -3,31 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ingresar — Panel de proyectos</title>
+<title>Acceso al Sistema — Ariztía IoT Core</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  .login-glow {
+    position: absolute;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(37,99,235,0.25) 0%, rgba(6,182,212,0.1) 40%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    filter: blur(40px);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .system-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+    border-radius: 999px;
+    margin-bottom: 0.8rem;
+    font-weight: 600;
+  }
+  .input-icon-group {
+    position: relative;
+  }
+  .input-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    pointer-events: none;
+  }
+  .input-icon-group input {
+    padding-left: 38px;
+  }
+  .security-footer {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+</style>
 </head>
 <body>
 
 <div class="login-wrapper">
+  <div class="login-glow"></div>
   <div class="login-card">
-    <h1>Iniciar sesión</h1>
-    <div class="subtitle">Panel de proyectos — Ariztía / Tracking</div>
+    <div class="logo-area">
+      <div class="logo-icon">🐔</div>
+      <div class="system-badge"><span class="dot-ping"></span> ARIZTÍA IoT CORE v2.4</div>
+      <h1>Control Central</h1>
+      <div class="subtitle">Monitoreo Ambiental & Visión Artificial</div>
+    </div>
 
-    <div class="login-error" id="loginError">Usuario o contraseña incorrectos.</div>
+    <div class="login-error" id="loginError">
+      <span>⚠️</span> Usuario o contraseña incorrectos. Revisa las credenciales.
+    </div>
 
     <form id="loginForm">
       <div class="campo">
-        <label for="usuario">Usuario</label>
-        <input type="text" id="usuario" autocomplete="username" required value="admin">
+        <label for="usuario">Usuario del Sistema</label>
+        <div class="input-icon-group">
+          <span class="input-icon">👤</span>
+          <input type="text" id="usuario" autocomplete="username" required value="admin" placeholder="Ingresa tu usuario">
+        </div>
       </div>
       <div class="campo">
-        <label for="clave">Contraseña</label>
-        <input type="password" id="clave" autocomplete="current-password" required value="admin">
+        <label for="clave">Contraseña de Acceso</label>
+        <div class="input-icon-group">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="clave" autocomplete="current-password" required value="admin" placeholder="••••••••">
+        </div>
       </div>
-      <button type="submit">Ingresar</button>
+      <button type="submit" id="btnSubmit">
+        <span>Ingresar al Panel de Control</span>
+        <span style="font-size: 1.1rem;">&rarr;</span>
+      </button>
     </form>
 
-    <div class="login-hint">Credenciales: usuario <code>admin</code> / clave <code>admin</code></div>
+    <div class="login-hint">
+      <span>Acceso de prueba autorizado:</span>
+      <button type="button" class="btn-demo-fill" onclick="llenarDemo()">
+        ⚡ Rellenar credenciales demo (admin / admin)
+      </button>
+    </div>
+
+    <div class="security-footer">
+      <span>🛡️ Modo Seguro Local</span>
+      <span>•</span>
+      <span>⚡ PostgreSQL 5432</span>
+    </div>
   </div>
 </div>
 
@@ -38,17 +116,28 @@
   const form = document.getElementById('loginForm');
   const errorBox = document.getElementById('loginError');
 
+  function llenarDemo() {
+    document.getElementById('usuario').value = USUARIO_DEMO;
+    document.getElementById('clave').value = CLAVE_DEMO;
+    errorBox.classList.remove('visible');
+  }
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const usuario = document.getElementById('usuario').value.trim();
     const clave = document.getElementById('clave').value.trim();
 
     if (usuario === USUARIO_DEMO && clave === CLAVE_DEMO) {
-      // Guardar en ambos almacenamientos para máxima compatibilidad
       try { localStorage.setItem('sesionActiva', 'true'); } catch (err) {}
       try { sessionStorage.setItem('sesionActiva', 'true'); } catch (err) {}
       
-      window.location.href = 'menu.html';
+      const btn = document.getElementById('btnSubmit');
+      btn.innerHTML = '<span>Verificando acceso...</span>';
+      btn.style.opacity = '0.8';
+      
+      setTimeout(() => {
+        window.location.href = 'menu.html';
+      }, 350);
     } else {
       errorBox.classList.add('visible');
     }

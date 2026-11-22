@@ -14,7 +14,17 @@ CARPETA = os.path.dirname(os.path.abspath(__file__))
 PUERTO_SITIO = 8000
 URL_LOGIN = f"http://localhost:{PUERTO_SITIO}/login.html"
 
-PYTHON = sys.executable
+def obtener_interprete_python():
+    """Detecta si existe un entorno virtual local (.venv) para usar sus dependencias."""
+    if os.name == "nt":
+        venv_py = os.path.join(CARPETA, ".venv", "Scripts", "python.exe")
+    else:
+        venv_py = os.path.join(CARPETA, ".venv", "bin", "python")
+    if os.path.exists(venv_py):
+        return venv_py
+    return sys.executable
+
+PYTHON = obtener_interprete_python()
 
 procesos = []
 
@@ -163,7 +173,14 @@ def main():
     httpd = None
 
     try:
-        print("\n1. Iniciando Backends de Datos y Monitoreo...")
+        print("\n1. Verificando e inicializando base de datos...")
+        try:
+            import database
+            database.inicializar_bd()
+        except Exception as e_bd:
+            print(f"   [AVISO BD] {e_bd}")
+
+        print("\n2. Iniciando Backends de Datos y Monitoreo...")
         # 1. Monitoreo Ariztía (Puerto 5001)
         iniciar_proceso([PYTHON, "app_ariztia.py"], "Monitoreo Ariztía (Puerto 5001)")
 
@@ -185,31 +202,37 @@ def main():
             print("   [INFO] Modo simulación activo. Cuando lleguen los sensores físicos,")
             print("          basta con crear 'bridge_sensores.py' y se iniciará aquí automáticamente.")
 
-        # 4. Prometheus (Puerto 9090)
+        # 4. Prometheus (Puerto 9090 / 9091)
         print("\n3. Métricas y Dashboards:")
-        prom_exe = buscar_ejecutable_prometheus()
-        if prom_exe:
-            # Buscar el archivo prometheus.yml
-            cfg_prom = os.path.join(CARPETA, "prometheus.yml")
-            if not os.path.exists(cfg_prom):
-                cfg_prom = os.path.join(os.path.dirname(prom_exe), "prometheus.yml")
-
-            iniciar_proceso([prom_exe, f"--config.file={cfg_prom}"], "Servidor Prometheus (Puerto 9090)")
+        if puerto_ocupado(9090) or puerto_ocupado(9091):
+            pto_act = 9090 if puerto_ocupado(9090) else 9091
+            print(f"   [INFO] Servidor Prometheus ya activo en puerto {pto_act} (Docker o local).")
         else:
-            print("   [AVISO] No se encontró prometheus.exe. Recuerda descomprimirlo en la carpeta.")
+            prom_exe = buscar_ejecutable_prometheus()
+            if prom_exe:
+                cfg_prom = os.path.join(CARPETA, "prometheus.yml")
+                if not os.path.exists(cfg_prom):
+                    cfg_prom = os.path.join(os.path.dirname(prom_exe), "prometheus.yml")
+
+                iniciar_proceso([prom_exe, f"--config.file={cfg_prom}"], "Servidor Prometheus (Puerto 9090)")
+            else:
+                print("   [AVISO] No se encontró prometheus.exe. Recuerda descomprimirlo en la carpeta.")
 
         # 5. Grafana (Puerto 3000)
-        grafana_exe = buscar_ejecutable_grafana()
-        if grafana_exe:
-            dir_grafana = os.path.dirname(os.path.dirname(grafana_exe))
-            if os.path.basename(grafana_exe).lower() == "grafana.exe":
-                cmd_grafana = [grafana_exe, "server", f"--homepath={dir_grafana}"]
-            else:
-                cmd_grafana = [grafana_exe, f"-homepath={dir_grafana}"]
-            iniciar_proceso(cmd_grafana, "Servidor Grafana (Puerto 3000)", cwd=dir_grafana)
+        if puerto_ocupado(3000):
+            print("   [INFO] Servidor Grafana ya activo en puerto 3000 (ej: Docker o servicio previo).")
         else:
-            print("   [INFO] Grafana: No detectado aún en el sistema.")
-            print("          (En cuanto descomprimas Grafana en la carpeta, se iniciará solo).")
+            grafana_exe = buscar_ejecutable_grafana()
+            if grafana_exe:
+                dir_grafana = os.path.dirname(os.path.dirname(grafana_exe))
+                if os.path.basename(grafana_exe).lower() == "grafana.exe":
+                    cmd_grafana = [grafana_exe, "server", f"--homepath={dir_grafana}"]
+                else:
+                    cmd_grafana = [grafana_exe, f"-homepath={dir_grafana}"]
+                iniciar_proceso(cmd_grafana, "Servidor Grafana (Puerto 3000)", cwd=dir_grafana)
+            else:
+                print("   [INFO] Grafana: No detectado aún en el sistema.")
+                print("          (En cuanto descomprimas Grafana en la carpeta, se iniciará solo).")
 
         # 6. Servidor Web del Menú y Login (Puerto 8000)
         print("\n4. Interfaz de Usuario:")

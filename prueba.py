@@ -7,7 +7,7 @@ import math
 import database
 
 
-from flask import Flask, Response, jsonify, render_template_string
+from flask import Flask, Response, jsonify, render_template_string, send_from_directory
 
 
 # Inicializa las tablas al arrancar
@@ -242,6 +242,7 @@ def ejecutar_tracking():
     frames = 0
     inicio = time.time()
     inicio_agrupamiento = None
+    ultimo_guardado_db = 0
     fallos = 0
     print("[INFO] Seguimiento OpenCV iniciado.")
 
@@ -339,6 +340,20 @@ def ejecutar_tracking():
                     "alerta": alerta,
                     "timestamp": time.time()
                 })
+
+            # Guardado periódico en SQLite (cada 3 segundos)
+            if ahora - ultimo_guardado_db >= 3.0:
+                ultimo_guardado_db = ahora
+                try:
+                    database.guardar_resumen(
+                        pollitos=len(pollitos),
+                        fps=fps,
+                        agrupamiento=agrupamiento,
+                        tiempo_agrupados=tiempo_agrupamiento,
+                        alerta=alerta
+                    )
+                except Exception:
+                    pass
         except Exception as exc:
             print(f"[ERROR] Seguimiento OpenCV: {exc}")
             time.sleep(0.1)
@@ -497,7 +512,15 @@ setInterval(actualizarDatos,1000); actualizarDatos();
 
 @app.route("/")
 def inicio():
+    ruta_tracking = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tracking.html")
+    if os.path.exists(ruta_tracking):
+        return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "tracking.html")
     return render_template_string(HTML.replace("__URL_MENU__", URL_MENU))
+
+
+@app.route("/styles.css")
+def estilos():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "styles.css")
 
 
 @app.route("/video_feed")

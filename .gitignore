@@ -5,37 +5,54 @@
 # Entorno virtual Python (pesado, se regenera con pip install)
 .venv/
 venv/
+env/
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
 
-# Ejecutables y carpetas de Prometheus y Grafana (son binarios grandes)
+# Ejecutables y carpetas de Prometheus y Grafana (binarios pesados)
 prometheus-*/
 grafana-*/
+*.exe
 
-# Modelos YOLO entrenados (archivos muy pesados, van en el README)
+# Modelos y pesos de redes neuronales (van fuera de Git)
 *.pt
+*.onnx
+*.weights
 
-# Base de datos local SQLite (se genera al correr el sistema)
+# Bases de datos locales generadas al correr
 *.db
 *.sqlite
-
-# Variables de entorno reales (nunca subir claves al repositorio)
-.env
-
-# Carpetas de datos generados por Grafana
+*.sqlite3
 data/
+postgres_data/
 
-# Archivos de sistema Windows
+# Variables de entorno y secretos
+.env
+*.local
+
+# Configuración de editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de sistema operativo
 Thumbs.db
 desktop.ini
+.DS_Store
 
-# Dataset de imágenes (si es muy grande, usar Git LFS o excluirlo)
+# Dataset de capturas (excluido para no inflar el repo)
 dataset_pollitos/
 
-# Template de sensores (ya no necesario con bridge_sensores.py activo)
-bridge_sensores.py.template
-
-# Archivos temporales
+# Archivos temporales y logs
 *.tmp
 *.log
+*.bak
+*.swp
+
+# Herramientas de API testing
+.postman/
+postman/
