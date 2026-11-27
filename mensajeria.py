@@ -114,28 +114,53 @@ def enviar_telegram(mensaje, token=None, chat_id=None):
         return False, f"Error conectando a Telegram: {e}"
 
 
-def enviar_webex(mensaje, webhook_url=None):
+def enviar_webex(mensaje, webhook_url=None, bot_token=None, room_id=None, to_person_email=None):
     """
-    Envía mensaje a un espacio de Cisco Webex Teams usando Incoming Webhook (Gratuito).
-    Para crearlo: Ve a Webex App Hub o developer.webex.com -> Webhooks -> Add Incoming Webhook.
+    Envía mensaje a Cisco Webex Teams (100% Gratuito).
+    Soporta dos métodos:
+      1. Incoming Webhook URL (Directo a un espacio/chat grupal).
+      2. Bot Token (A un correo de usuario específico o espacio).
     """
     cfg = cargar_config_mensajeria().get("webex", {})
-    url = webhook_url or cfg.get("webhook_url")
+    url = webhook_url or cfg.get("webhook_url", "")
+    token = bot_token or cfg.get("bot_token", "")
+    room = room_id or cfg.get("room_id", "")
+    email = to_person_email or cfg.get("to_person_email", "")
 
-    if not url:
-        return False, "Falta configurar webhook_url de Cisco Webex"
+    # Método 1: Incoming Webhook (Recomendado y más simple)
+    if url and url.startswith("http"):
+        payload = {"markdown": mensaje}
+        try:
+            resp = requests.post(url, json=payload, timeout=8)
+            if resp.status_code in [200, 204]:
+                return True, "Mensaje de Cisco Webex (Webhook) enviado con éxito"
+            return False, f"Webex Webhook error: {resp.status_code} - {resp.text}"
+        except Exception as e:
+            return False, f"Error conectando a Webex Webhook: {e}"
 
-    payload = {
-        "markdown": mensaje
-    }
+    # Método 2: Bot Access Token
+    if token:
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {"markdown": mensaje}
+        if email:
+            payload["toPersonEmail"] = email
+        elif room:
+            payload["roomId"] = room
+        else:
+            return False, "Falta especificar 'to_person_email' o 'room_id' en la configuración de Webex"
 
-    try:
-        resp = requests.post(url, json=payload, timeout=8)
-        if resp.status_code in [200, 204]:
-            return True, "Mensaje de Cisco Webex enviado con éxito"
-        return False, f"Webex error: {resp.status_code} - {resp.text}"
-    except Exception as e:
-        return False, f"Error conectando a Webex: {e}"
+        try:
+            resp = requests.post("https://webexapis.com/v1/messages", headers=headers, json=payload, timeout=8)
+            if resp.status_code == 200:
+                return True, "Mensaje de Cisco Webex (Bot) enviado con éxito"
+            return False, f"Webex API error: {resp.status_code} - {resp.text}"
+        except Exception as e:
+            return False, f"Error conectando a Webex API: {e}"
+
+    return False, "Falta configurar 'webhook_url' o 'bot_token' de Cisco Webex en config_hardware.json"
 
 
 def enviar_alerta_multicanal(titulo, detalle, nivel="critico", forzar=False):

@@ -55,9 +55,11 @@
       "instrucciones": "Envía /start a tu bot @CallmeTokenbot y luego obtén tu chat_id en @userinfobot"
     },
     "webex": {
-      "habilitado": false,
-      "webhook_url": "",
-      "instrucciones": "Crea un Incoming Webhook en developer.webex.com"
+      "habilitado": true,
+      "webhook_url": "PEGA_AQUI_TU_WEBHOOK_URL_DE_WEBEX",
+      "bot_token": "",
+      "to_person_email": "",
+      "instrucciones": "Para crear tu Webhook gratis en 2 minutos: En la app de Webex crea un espacio 'Alertas Ariztía', ve a Apps / Integraciones -> Incoming Webhooks -> Copia la URL generada y pégala aquí."
     }
   }
 }
