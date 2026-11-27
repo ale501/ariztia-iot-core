@@ -16,6 +16,24 @@ import mensajeria
 CARPETA = os.path.dirname(os.path.abspath(__file__))
 
 
+def cargar_env():
+    """Carga variables desde el archivo local .env de forma nativa sin librerías extras."""
+    ruta_env = os.path.join(CARPETA, ".env")
+    if os.path.exists(ruta_env):
+        try:
+            with open(ruta_env, "r", encoding="utf-8") as f:
+                for linea in f:
+                    linea = linea.strip()
+                    if linea and not linea.startswith("#") and "=" in linea:
+                        k, v = linea.split("=", 1)
+                        os.environ[k.strip()] = v.strip()
+        except Exception:
+            pass
+
+
+cargar_env()
+
+
 def cargar_config_openrouter():
     """Carga configuración de OpenRouter desde config_hardware.json."""
     ruta_cfg = os.path.join(CARPETA, "config_hardware.json")
@@ -60,11 +78,11 @@ def consultar_openrouter(pregunta, datos_amb, datos_trk):
     if not cfg.get("habilitado", False):
         return None
 
-    api_key = cfg.get("api_key", "").strip()
+    api_key = os.environ.get("OPENROUTER_API_KEY") or cfg.get("api_key", "").strip()
     if not api_key or "PEGA_AQUI" in api_key:
         return None
 
-    modelo = cfg.get("modelo", "google/gemini-2.0-flash-exp:free")
+    modelo = cfg.get("modelo", "nvidia/nemotron-3.5-lightning:free")
 
     # Inyección de datos vivos en el prompt de sistema
     t_str = "23.5 °C"
