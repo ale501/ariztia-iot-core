@@ -63,5 +63,20 @@
       "room_id": "",
       "instrucciones": "Para recibir las alertas: Crea un espacio en Webex y agrega a 'ariztia_bot_41@webex.bot' o escribe tu correo de Webex en 'to_person_email'."
     }
+  },
+
+  "ia_openrouter": {
+    "descripcion": "Inteligencia Artificial avanzada para el Chatbot con modelos 100% gratuitos",
+    "habilitado": true,
+    "api_key": "PEGA_AQUI_TU_API_KEY_OPENROUTER",
+    "modelo": "google/gemini-2.0-flash-exp:free",
+    "modelos_gratuitos_disponibles": [
+      "google/gemini-2.0-flash-exp:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "deepseek/deepseek-r1:free",
+      "mistralai/mistral-small-24b-instruct-2501:free",
+      "qwen/qwen-2.5-72b-instruct:free"
+    ],
+    "instrucciones": "Crea tu API Key gratuita en https://openrouter.ai/keys (sin tarjeta) y pégala aquí."
   }
 }
