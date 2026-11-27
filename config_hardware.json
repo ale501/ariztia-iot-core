@@ -38,5 +38,26 @@
       "password": "ariztia_password"
     },
     "sqlite_archivo": "tracking.db"
+  },
+
+  "notificaciones": {
+    "descripcion": "Configuración de mensajería gratuita para alertas automáticas y reportes",
+    "whatsapp": {
+      "habilitado": false,
+      "numero_telefono": "+56912345678",
+      "apikey": "TU_APIKEY_CALLMEBOT",
+      "instrucciones": "Para tu apikey gratis de WhatsApp: envía 'I allow callmebot to send me messages' al +34 644 44 24 33"
+    },
+    "telegram": {
+      "habilitado": false,
+      "bot_token": "9065892213:AAHzho6Et8QEF3Zxqc0ZpLGLcNsaQPKkW-k",
+      "chat_id": "",
+      "instrucciones": "Envía /start a tu bot @CallmeTokenbot y luego obtén tu chat_id en @userinfobot"
+    },
+    "webex": {
+      "habilitado": false,
+      "webhook_url": "",
+      "instrucciones": "Crea un Incoming Webhook en developer.webex.com"
+    }
   }
 }

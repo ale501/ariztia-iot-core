@@ -8,6 +8,9 @@ from datetime import datetime
 import database
 database.inicializar_bd()
 
+import chatbot
+import mensajeria
+
 from flask import Flask, jsonify, send_from_directory, Response, request
 from prometheus_client import Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
 
@@ -179,6 +182,17 @@ class SimuladorAriztia:
         except Exception:
             pass
 
+        # Disparo automático de alertas por mensajería (WhatsApp / Telegram / Webex)
+        if nivel == "critico" or (isinstance(temp, (int, float)) and temp >= 35.0):
+            try:
+                mensajeria.enviar_alerta_multicanal(
+                    titulo="Alerta Térmica en Galpón",
+                    detalle=f"T: {temp}°C, HR: {hum}%, IEC: {iec} ({etiqueta}). Protocolo: {accion}",
+                    nivel="critico"
+                )
+            except Exception:
+                pass
+
         return lectura
 
     def generar_lectura_ensayo(self):
@@ -333,6 +347,32 @@ def ariztia_reiniciar():
     return jsonify({"ok": True})
 
 
+@app.route("/api/chatbot", methods=["GET", "POST"])
+def api_chatbot():
+    """Endpoint del Chatbot IA: procesa preguntas en lenguaje natural."""
+    msg = ""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        msg = data.get("mensaje", "")
+    else:
+        msg = request.args.get("mensaje", "")
+
+    resultado = chatbot.responder_consulta(msg)
+    return jsonify({"ok": True, "resultado": resultado})
+
+
+@app.route("/api/enviar_mensaje", methods=["POST"])
+def api_enviar_mensaje():
+    """Permite enviar una alerta directa desde la interfaz o el bot."""
+    data = request.get_json(silent=True) or {}
+    titulo = data.get("titulo", "Notificación Ariztía")
+    detalle = data.get("detalle", "Prueba de mensajería desde el panel web")
+    nivel = data.get("nivel", "info")
+
+    res = mensajeria.enviar_alerta_multicanal(titulo, detalle, nivel=nivel, forzar=True)
+    return jsonify({"ok": True, "res": res})
+
+
 @app.route("/")
 def index():
     return send_from_directory(CARPETA, "ariztia.html")
@@ -346,6 +386,11 @@ def metrics():
 @app.route("/styles.css")
 def estilos():
     return send_from_directory(CARPETA, "styles.css")
+
+
+@app.route("/chatbot_widget.js")
+def chatbot_widget():
+    return send_from_directory(CARPETA, "chatbot_widget.js")
 
 
 if __name__ == "__main__":
