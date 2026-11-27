@@ -56,10 +56,12 @@
     },
     "webex": {
       "habilitado": true,
-      "webhook_url": "PEGA_AQUI_TU_WEBHOOK_URL_DE_WEBEX",
-      "bot_token": "",
+      "webhook_url": "",
+      "bot_token": "YTQxNGNkOWQtNjIyMi00ZmY3LWJkYmEtMThlZDc4Y2ZhYjhkYjc2NmU5NTEtYTZm_P0A1_106dbd04-bfcd-4818-b82e-a0936f3fa0d9",
+      "bot_email": "ariztia_bot_41@webex.bot",
       "to_person_email": "",
-      "instrucciones": "Para crear tu Webhook gratis en 2 minutos: En la app de Webex crea un espacio 'Alertas Ariztía', ve a Apps / Integraciones -> Incoming Webhooks -> Copia la URL generada y pégala aquí."
+      "room_id": "",
+      "instrucciones": "Para recibir las alertas: Crea un espacio en Webex y agrega a 'ariztia_bot_41@webex.bot' o escribe tu correo de Webex en 'to_person_email'."
     }
   }
 }

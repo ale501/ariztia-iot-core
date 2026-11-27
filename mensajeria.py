@@ -145,12 +145,25 @@ def enviar_webex(mensaje, webhook_url=None, bot_token=None, room_id=None, to_per
             "Content-Type": "application/json"
         }
         payload = {"markdown": mensaje}
+        target_room = room
+
+        # Si no hay sala fija ni correo, auto-detecta la sala donde agregaron al bot
+        if not target_room and not email:
+            try:
+                r_rooms = requests.get("https://webexapis.com/v1/rooms", headers=headers, timeout=5)
+                if r_rooms.status_code == 200:
+                    items = r_rooms.json().get("items", [])
+                    if items:
+                        target_room = items[0]["id"]
+            except Exception:
+                pass
+
         if email:
             payload["toPersonEmail"] = email
-        elif room:
-            payload["roomId"] = room
+        elif target_room:
+            payload["roomId"] = target_room
         else:
-            return False, "Falta especificar 'to_person_email' o 'room_id' en la configuración de Webex"
+            return False, "Agrega al bot a tu espacio de Webex o escribe tu correo en 'to_person_email' en config_hardware.json"
 
         try:
             resp = requests.post("https://webexapis.com/v1/messages", headers=headers, json=payload, timeout=8)
