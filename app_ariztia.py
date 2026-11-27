@@ -347,9 +347,20 @@ def ariztia_reiniciar():
     return jsonify({"ok": True})
 
 
-@app.route("/api/chatbot", methods=["GET", "POST"])
+@app.after_request
+def habilitar_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    return response
+
+
+@app.route("/api/chatbot", methods=["GET", "POST", "OPTIONS"])
 def api_chatbot():
     """Endpoint del Chatbot IA: procesa preguntas en lenguaje natural."""
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True})
+
     msg = ""
     if request.method == "POST":
         data = request.get_json(silent=True) or {}

@@ -1,5 +1,6 @@
 import glob
 import http.server
+import json
 import os
 import shutil
 import socket
@@ -116,7 +117,40 @@ class ManejadorSinCache(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
+        self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+
+    def do_POST(self):
+        if self.path.startswith("/api/chatbot"):
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(body)
+            except Exception:
+                data = {}
+            msg = data.get("mensaje", "")
+            try:
+                import chatbot
+                resultado = chatbot.responder_consulta(msg)
+            except Exception as e:
+                resultado = {"respuesta": f"⚠️ Error en asistente: {e}"}
+
+            resp_bytes = json.dumps({"ok": True, "resultado": resultado}).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(resp_bytes)
+            return
+
+        super().do_POST()
 
 
 def iniciar_servidor_estatico():

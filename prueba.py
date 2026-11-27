@@ -523,6 +523,26 @@ def estilos():
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "styles.css")
 
 
+@app.route("/chatbot_widget.js")
+def chatbot_widget():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "chatbot_widget.js")
+
+
+@app.route("/api/chatbot", methods=["GET", "POST", "OPTIONS"])
+def api_chatbot():
+    import chatbot
+    from flask import request
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True})
+    msg = ""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        msg = data.get("mensaje", "")
+    else:
+        msg = request.args.get("mensaje", "")
+    return jsonify({"ok": True, "resultado": chatbot.responder_consulta(msg)})
+
+
 @app.route("/video_feed")
 def video_feed():
     return Response(generar_video(),
